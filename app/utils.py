@@ -6,8 +6,9 @@ except ModuleNotFoundError:
     import tomli as tomllib
 import logging
 
-logger = logging
-logger.basicConfig(format='%(asctime)s - %(levelname)s %(name)s: %(message)s', level=logging.INFO)
+# Set up logging for the module
+logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s - %(levelname)s %(name)s: %(message)s', level=logging.INFO)
 
 # Set environment variables to override properties from configuration file
 CONFIG_KEYS = {
@@ -18,20 +19,23 @@ CONFIG_KEYS = {
     "SAVE_INTERVAL": "saves.interval"
 }
 
-def toml_path_to_dict_access(key):
-    return '["' +'"]["'.join(key.split('.')) + '"]'
-
-def update_conf_from_env(CONFIG_KEYS, config):
-    for env, toml_path in CONFIG_KEYS.items():
+def update_conf_from_env(keys_map, config):
+    for env, toml_path in keys_map.items():
         if env in os.environ:
-            dict_access = toml_path_to_dict_access(toml_path)
-            exec(f'config{dict_access}=os.environ[env]')
+            current_dict = config
+            keys = toml_path.split(".")
+            for key in keys[:-1]:
+                current_dict = current_dict[key]
+            current_dict[keys[-1]] = os.environ[env]
 
 def read_config(toml_file):
-    with open(toml_file, mode="rb") as fp:
-        config = tomllib.load(fp)
-    return config
-
-config_path = os.environ["OWNFOIL_CONFIG"] 
-config = read_config(config_path)
-update_conf_from_env(CONFIG_KEYS, config)
+    try:
+        with open(toml_file, mode="rb") as fp:
+            config = tomllib.load(fp)
+        return config
+    except FileNotFoundError:
+        logger.error(f"Configuration file {toml_file} not found.")
+        raise FileNotFoundError(f"Configuration file {toml_file} not found.")
+    except Exception as e:
+        logger.error(f"Error reading configuration file: {e}")
+        raise

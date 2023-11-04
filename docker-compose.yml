@@ -15,5 +15,6 @@ services:
       # - SAVE_ENABLED=true
     volumes:
       - /your/game/directory:/games
+      - /your/config/directory/:/config
     ports:
       - "8000:80"
